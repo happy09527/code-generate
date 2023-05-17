@@ -1,9 +1,11 @@
 package com.exam.generate;
 
+import com.exam.generate.bean.TableInfo;
+import com.exam.generate.builder.BuildBase;
+import com.exam.generate.builder.BuildPo;
 import com.exam.generate.builder.BuilderTable;
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import java.util.List;
 
 /**
  * @author: ZhangX
@@ -11,11 +13,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @description:
  */
 
-//@SpringBootApplication
-//@MapperScan(basePackages = "com.exam.generate.mapper")
 public class GenApplication {
     public static void main(String[] args) {
-//        SpringApplication.run(GenApplication.class,args);
-        BuilderTable.getTables();
+        List<TableInfo> tables =  BuilderTable.getTables();
+        BuildBase.execute();
+        for(TableInfo tableInfo : tables){
+            BuildPo.execute(tableInfo);
+        }
     }
 }

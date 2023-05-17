@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @author: ZhangX
  * @createDate: 2023/5/13
- * @description:
+ * @description: 通过反射获取properties文件信息
  */
 public class PropertiesUtil {
     private static Properties properties = new Properties();
@@ -22,12 +22,12 @@ public class PropertiesUtil {
             inputStream = PropertiesUtil.class.getClassLoader().getResourceAsStream("application.properties");
             properties.load(inputStream);
             Iterator<Object> iterator = properties.keySet().iterator();
-            while(iterator.hasNext()){
+            while (iterator.hasNext()) {
                 String key = (String) iterator.next();
-                propMap.put(key,properties.getProperty(key));
+                propMap.put(key, properties.getProperty(key));
             }
         } catch (Exception e) {
-
+            e.printStackTrace();
         } finally {
             if (inputStream != null) {
                 try {
@@ -39,7 +39,7 @@ public class PropertiesUtil {
         }
     }
 
-    public static String getKey(String key){
+    public static String getKey(String key) {
         return propMap.get(key);
     }
 }

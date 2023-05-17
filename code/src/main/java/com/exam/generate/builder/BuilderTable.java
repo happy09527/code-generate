@@ -3,23 +3,22 @@ package com.exam.generate.builder;
 import com.exam.generate.bean.Constants;
 import com.exam.generate.bean.FieldInfo;
 import com.exam.generate.bean.TableInfo;
-import com.exam.generate.utils.MyStringUtils;
+import com.exam.generate.utils.MyStringUtil;
 import com.exam.generate.utils.PropertiesUtil;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.tomcat.util.bcel.classfile.Constant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.stylesheets.LinkStyle;
 
-import javax.xml.transform.Result;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author: ZhangX
  * @createDate: 2023/5/13
- * @description:
+ * @description: 将数据库的表转为对象
  */
 
 public class BuilderTable {
@@ -28,6 +27,8 @@ public class BuilderTable {
     private static String SQL_SHOW_TABLE_STATUS = "show table status";
 
     private static String SQL_SHOW_TABLE_FIELDS = "show full fields from %s";
+
+    private static String SQL_SHOW_TABLE_INDEX = "show index from %s";
 
     static {
         String driverName = PropertiesUtil.getKey("spring.datasource.driver-class-name");
@@ -41,7 +42,9 @@ public class BuilderTable {
             logger.error("数据库连接失败", e);
         }
     }
-
+    /**
+     * @description: 通过读取mysql表，创建表对象，获取属性
+     **/
     public static List<TableInfo> getTables() {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -61,8 +64,10 @@ public class BuilderTable {
                 table.setBeanName(beanName);
                 table.setComment(comment);
                 table.setBeanParamName(beanName);
-                table.setFields(getFields(table));
-                logger.info(table.toString());
+                getFields(table);
+                getIndex(table);
+                tables.add(table);
+//                logger.info(table.toString());
             }
         } catch (SQLException e) {
             logger.error("查询表结构失败", e);
@@ -91,7 +96,9 @@ public class BuilderTable {
         }
         return tables;
     }
-
+    /**
+     * @description: 通过mysql获取字段信息
+     **/
     private static List<FieldInfo> getFields(TableInfo tableInfo) {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
@@ -116,7 +123,6 @@ public class BuilderTable {
                 fieldInfo.setAutoIncrement("auto_increment".equalsIgnoreCase(extra));
                 fieldInfo.setPropertyName(propertyName);
                 fieldInfo.setJavaType(processJavaType(type));
-                fieldInfos.add(fieldInfo);
                 if (ArrayUtils.contains(Constants.SQL_DECIMAL_TYPE, type)) {
                     tableInfo.setHaveBigDecimal(true);
                 }
@@ -126,7 +132,9 @@ public class BuilderTable {
                 if (ArrayUtils.contains(Constants.SQL_DATE_TIME_TYPES, type)) {
                     tableInfo.setHaveDateTime(true);
                 }
+                fieldInfos.add(fieldInfo);
             }
+            tableInfo.setFields(fieldInfos);
         } catch (Exception e) {
             logger.error("查询表属性失败", e);
         } finally {
@@ -148,6 +156,53 @@ public class BuilderTable {
         return fieldInfos;
     }
 
+    private static List<FieldInfo> getIndex(TableInfo tableInfo) {
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        List<FieldInfo> fieldInfos = new ArrayList<>();
+        Map<String,FieldInfo> map = new HashMap<>();
+        for(FieldInfo fieldInfo : tableInfo.getFields()){
+            map.put(fieldInfo.getFieldName(),fieldInfo);
+        }
+        try {
+            preparedStatement = connection.prepareStatement(String.format(SQL_SHOW_TABLE_INDEX, tableInfo.getTableName()));
+            resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                String keyName = resultSet.getString("key_name");
+                Integer nonUnique = resultSet.getInt("non_unique");
+                String columnName = resultSet.getString("column_name");
+                if (nonUnique == 1) {
+                    continue;
+                }
+                List<FieldInfo> fields = tableInfo.getKeyIndex().get(keyName);
+                if (fields == null) {
+                    fields = new ArrayList<>();
+                    tableInfo.getKeyIndex().put(keyName, fields);
+                }
+                fields.add(map.get(columnName));
+            }
+        } catch (Exception e) {
+            logger.error("查询表索引失败", e);
+        } finally {
+            if (preparedStatement != null) {
+                try {
+                    preparedStatement.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (resultSet != null) {
+                try {
+                    resultSet.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return fieldInfos;
+    }
+
+
     private static String processJavaType(String type) {
         if (ArrayUtils.contains(Constants.SQL_DATE_TIME_TYPES, type) || ArrayUtils.contains(Constants.SQL_DATE_TYPES, type)) {
             return "Date";
@@ -168,13 +223,17 @@ public class BuilderTable {
         StringBuffer stringBuffer = new StringBuffer();
         String[] fields = field.split("_");
         if (upCaseField) {
-            stringBuffer.append(MyStringUtils.upCaseString(fields[0]));
+            stringBuffer.append(MyStringUtil.upCaseString(fields[0]));
         } else {
             stringBuffer.append(fields[0]);
         }
         for (int i = 1; i < fields.length; i++) {
-            stringBuffer.append(MyStringUtils.upCaseString(fields[i]));
+            stringBuffer.append(MyStringUtil.upCaseString(fields[i]));
         }
         return stringBuffer.toString();
+    }
+
+    public static void main(String[] args) {
+        getTables();
     }
 }

@@ -4,7 +4,7 @@ package com.exam.generate.bean;
 /**
  * @author: ZhangX
  * @createDate: 2023/5/13
- * @description:
+ * @description: 数据库表字段属性
  */
 
 public class FieldInfo {

@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * @author: ZhangX
  * @createDate: 2023/5/13
- * @description:
+ * @description: 数据库表
  */
 
 public class TableInfo {
